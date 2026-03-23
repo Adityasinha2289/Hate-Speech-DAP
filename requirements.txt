@@ -1,7 +1,8 @@
+gradio==4.14.0
 flask
 flask-cors
 pandas
 scikit-learn
 joblib
 nltk
-gradio
+huggingface-hub>=0.19.0
