@@ -1,20 +1,10 @@
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
+import gradio as gr
 import joblib
 import re
 import nltk
-import os
 from nltk.corpus import stopwords
-import io
-
-# --- Initialize Flask App and CORS ---
-app = Flask(__name__, static_folder='.', static_url_path='')
-# CORS is required to allow your HTML file (on a 'file://' URL)
-# to make requests to this server (on 'http://127.0.0.1')
-CORS(app) 
 
 # --- Text Preprocessing Function ---
-# This MUST be identical to the one used in train_model.py
 try:
     stop_words = set(stopwords.words('english'))
 except LookupError:
@@ -54,62 +44,108 @@ class_labels = {
     2: "Normal Speech"
 }
 
-# --- Define API Endpoint ---
-@app.route('/classify', methods=['POST'])
-def classify_message():
-    """
-    The main API endpoint.
-    Receives JSON data: {"message": "some text..."}
-    Returns JSON data: {"class": 0, "label": "Hate Speech", "confidence": 0.9}
-    """
-    if not request.json or 'message' not in request.json:
-        return jsonify({"error": "No 'message' field in JSON payload."}), 400
+# Define colors for each class
+class_colors = {
+    0: "#dc2626",  # Red for hate speech
+    1: "#ca8a04",  # Yellow for offensive
+    2: "#16a34a",  # Green for normal
+}
 
-    # 1. Get text from the incoming request
-    message = request.json['message']
+def classify_text(message):
+    """
+    Classifies a message and returns the prediction with confidence score.
+    """
+    if not message or not message.strip():
+        return "Please enter a message to classify.", None
     
-    # 2. Clean the text (must use the *exact* same function as training)
+    # Clean the text
     cleaned_message = clean_text(message)
     
-    # 3. Get prediction from the model
-    # We pass the cleaned message as a list
+    if not cleaned_message:
+        return "Message is empty after preprocessing.", None
+    
     try:
+        # Get prediction from the model
         prediction = pipeline.predict([cleaned_message])[0]
         
-        # 4. Get confidence score (probabilities)
+        # Get confidence score (probabilities)
         probabilities = pipeline.predict_proba([cleaned_message])[0]
         confidence = float(max(probabilities))
         
-        # 5. Get the human-readable label
+        # Get the human-readable label
         label = class_labels.get(int(prediction), "Unknown")
         
-        # 6. Format and send the response
-        response = {
-            "class": int(prediction),
-            "label": label,
-            "confidence": confidence
-        }
-        return jsonify(response)
+        # Format the result
+        if prediction == 0:  # Hate Speech
+            result = f"🚨 **HATE SPEECH DETECTED**\n\n**Classification:** {label}\n\n**Confidence:** {confidence*100:.2f}%\n\n**Status:** This content is flagged as highly violative and should be removed."
+        elif prediction == 1:  # Offensive
+            result = f"⚠️ **OFFENSIVE CONTENT DETECTED**\n\n**Classification:** {label}\n\n**Confidence:** {confidence*100:.2f}%\n\n**Status:** This content contains offensive language and may need moderation."
+        else:  # Normal
+            result = f"✅ **CONTENT APPROVED**\n\n**Classification:** {label}\n\n**Confidence:** {confidence*100:.2f}%\n\n**Status:** This content appears to be normal and non-violative."
+        
+        return result, label
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return f"Error during classification: {str(e)}", None
 
-# --- Serve the HTML file ---
-@app.route('/')
-def index():
-    """Serve the HTML interface."""
-    try:
-        html_path = os.path.join(os.path.dirname(__file__), 'hate_speech_detector.html')
-        return send_file(html_path, mimetype='text/html')
-    except Exception as e:
-        return f"Error loading interface: {str(e)}", 500
-
-# --- Run the Server ---
-if __name__ == '__main__':
-    # For Hugging Face Spaces: listen on 0.0.0.0, port 7860
-    # For local development: listen on 127.0.0.1, port 5000
-    port = int(os.environ.get('PORT', 7860))
-    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
-    host = '0.0.0.0'  # Listen on all interfaces for Hugging Face
+# --- Create Gradio Interface ---
+with gr.Blocks(title="Hate Speech Detection Bot", theme=gr.themes.Soft(primary_hue="blue")) as demo:
+    gr.Markdown("""
+    # Content Moderation Bot
     
-    app.run(debug=debug, host=host, port=port, threaded=True, use_reloader=False)
+    **Classify text as Hate Speech, Offensive Language, or Normal Speech**
+    
+    This AI-powered content moderation system uses machine learning to automatically detect harmful content.
+    """)
+    
+    with gr.Row():
+        with gr.Column(scale=1):
+            message_input = gr.Textbox(
+                label="Enter Message to Classify",
+                placeholder="Type a message here...",
+                lines=3,
+                interactive=True
+            )
+            
+            classify_button = gr.Button("Analyze", variant="primary", size="lg")
+    
+    with gr.Row():
+        with gr.Column():
+            result_output = gr.Markdown(
+                value="Results will appear here after you submit a message.",
+                label="Classification Result"
+            )
+            
+            label_output = gr.Textbox(
+                label="Classification Label",
+                interactive=False,
+                visible=False
+            )
+    
+    gr.Markdown("""
+    ---
+    
+    ### How It Works
+    - **Hate Speech:** Content that attacks, demeans, or incites violence against individuals or groups
+    - **Offensive Language:** Content with profanity, rudeness, or disrespect but not targeting specific groups
+    - **Normal Speech:** Regular, non-violative content
+    
+    *Note: This classifier is for demonstration purposes. Always review results manually.*
+    """)
+    
+    # Link button to classification function
+    classify_button.click(
+        fn=classify_text,
+        inputs=[message_input],
+        outputs=[result_output, label_output]
+    )
+    
+    # Also classify on Enter key in textbox
+    message_input.submit(
+        fn=classify_text,
+        inputs=[message_input],
+        outputs=[result_output, label_output]
+    )
+
+if __name__ == "__main__":
+    demo.launch()
