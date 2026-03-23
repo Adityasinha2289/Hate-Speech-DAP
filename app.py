@@ -108,4 +108,4 @@ if __name__ == '__main__':
     debug = os.environ.get('DEBUG', 'False').lower() == 'true'
     host = '0.0.0.0'  # Listen on all interfaces for Hugging Face
     
-    app.run(debug=debug, host=host, port=port)
+    app.run(debug=debug, host=host, port=port, threaded=True, use_reloader=False)
