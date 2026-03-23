@@ -1,13 +1,14 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import joblib
 import re
 import nltk
 import os
 from nltk.corpus import stopwords
+import io
 
 # --- Initialize Flask App and CORS ---
-app = Flask(__name__, static_folder='.')
+app = Flask(__name__, static_folder='.', static_url_path='')
 # CORS is required to allow your HTML file (on a 'file://' URL)
 # to make requests to this server (on 'http://127.0.0.1')
 CORS(app) 
@@ -97,8 +98,11 @@ def classify_message():
 @app.route('/')
 def index():
     """Serve the HTML interface."""
-    with open('hate_speech_detector.html', 'r') as f:
-        return f.read()
+    try:
+        html_path = os.path.join(os.path.dirname(__file__), 'hate_speech_detector.html')
+        return send_file(html_path, mimetype='text/html')
+    except Exception as e:
+        return f"Error loading interface: {str(e)}", 500
 
 # --- Run the Server ---
 if __name__ == '__main__':
