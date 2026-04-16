@@ -3,262 +3,1787 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hate Speech Detection Bot</title>
+    <title>ModerateAI — Content Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+
     <style>
-        /* Use Inter font */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
+        :root {
+            --bg-deep:    #090c12;
+            --bg-mid:     #0e1420;
+            --bg-surface: #141b2d;
+            --bg-raised:  #1a2236;
+            --border:     rgba(255,255,255,0.06);
+            --border-bright: rgba(255,255,255,0.12);
+            --accent:     #4f7cff;
+            --accent-glow: rgba(79,124,255,0.25);
+            --text-primary: #eef0f6;
+            --text-secondary: #7b8499;
+            --text-muted: #4a5168;
+            --red:    #ff4d6a;
+            --red-bg: rgba(255,77,106,0.08);
+            --yellow: #ffbe3d;
+            --yellow-bg: rgba(255,190,61,0.08);
+            --green:  #3dd68c;
+            --green-bg: rgba(61,214,140,0.08);
         }
 
-        /* Custom scrollbar for chat log - More subtle dark-mode scrollbar */
-        #chat-log::-webkit-scrollbar {
-            width: 8px; /* Slightly wider */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
         }
-        #chat-log::-webkit-scrollbar-track {
-            background: #1f2937; /* bg-gray-800 equivalent */
+
+        /* Background grid pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(79,124,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(79,124,255,0.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
         }
+
+        /* Ambient glow blobs */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 600px 400px at 10% 20%, rgba(79,124,255,0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 350px at 90% 80%, rgba(147,79,255,0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Layout ───────────────────────────────────── */
+        .app-shell {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            height: 100vh;
+            width: 100%;
+        }
+
+        /* ── Sidebar ──────────────────────────────────── */
+        .sidebar {
+            width: 240px;
+            flex-shrink: 0;
+            background: var(--bg-mid);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-logo {
+            padding: 0 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-logo .wordmark {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+        }
+
+        .sidebar-logo .wordmark span {
+            color: var(--accent);
+        }
+
+        .sidebar-logo .badge {
+            display: inline-block;
+            margin-top: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: var(--bg-raised);
+            border: 1px solid var(--border);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .sidebar-nav {
+            padding: 16px 12px;
+            flex: 1;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0 8px;
+            margin-bottom: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: rgba(79,124,255,0.1);
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .nav-item svg { opacity: 0.7; }
+        .nav-item.active svg { opacity: 1; }
+
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .model-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .model-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ── Main chat area ───────────────────────────── */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: var(--bg-deep);
+        }
+
+        .workspace-panels {
+            flex: 1;
+            min-height: 0;
+            position: relative;
+        }
+
+        .view-panel {
+            display: none;
+            height: 100%;
+            min-height: 0;
+            overflow: auto;
+            padding: 28px;
+        }
+
+        .view-panel.active {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .view-panel::-webkit-scrollbar { width: 4px; }
+        .view-panel::-webkit-scrollbar-thumb {
+            background: var(--bg-raised);
+            border-radius: 4px;
+        }
+
+        .panel-grid {
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .glass-card {
+            background: linear-gradient(180deg, rgba(20,27,45,0.96), rgba(14,20,32,0.96));
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: 0 18px 60px rgba(0,0,0,0.24);
+        }
+
+        .hero-card {
+            padding: 22px;
+            grid-column: span 12;
+            display: grid;
+            grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+            gap: 18px;
+        }
+
+        .hero-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 28px;
+            line-height: 1.05;
+            font-weight: 800;
+            margin: 10px 0 10px;
+        }
+
+        .hero-copy {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: 62ch;
+        }
+
+        .hero-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 7px 11px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .status-pill strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .kpi-card {
+            grid-column: span 3;
+            padding: 18px;
+            min-height: 132px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .kpi-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+        }
+
+        .kpi-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            margin-top: 8px;
+        }
+
+        .kpi-note {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .stack-card {
+            grid-column: span 7;
+            padding: 18px;
+        }
+
+        .side-card {
+            grid-column: span 5;
+            padding: 18px;
+        }
+
+        .card-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .stack-list, .signal-list, .rule-list, .setting-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .stack-row, .signal-row, .rule-row, .setting-row {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+        }
+
+        .stack-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .stack-row strong,
+        .signal-row strong,
+        .rule-row strong,
+        .setting-row strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .stack-row span,
+        .signal-row span,
+        .rule-row span,
+        .setting-row span {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .metric-track {
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .metric-fill {
+            height: 100%;
+            border-radius: inherit;
+            transition: width 0.5s ease;
+        }
+
+        .metric-fill.hate { background: linear-gradient(90deg, rgba(255,77,106,0.4), var(--red)); }
+        .metric-fill.offensive { background: linear-gradient(90deg, rgba(255,190,61,0.4), var(--yellow)); }
+        .metric-fill.normal { background: linear-gradient(90deg, rgba(61,214,140,0.4), var(--green)); }
+
+        .view-section-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .mini-stat {
+            padding: 12px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+        }
+
+        .mini-stat .num {
+            font-size: 18px;
+            font-weight: 800;
+            font-family: 'Syne', sans-serif;
+            margin-top: 4px;
+        }
+
+        .analytics-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 16px;
+        }
+
+        .bar-row {
+            display: grid;
+            grid-template-columns: 130px 1fr 54px;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .bar-track {
+            height: 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: inherit;
+            transition: width 0.6s ease;
+        }
+
+        .bar-fill.normal { background: linear-gradient(90deg, rgba(61,214,140,0.45), var(--green)); }
+        .bar-fill.offensive { background: linear-gradient(90deg, rgba(255,190,61,0.45), var(--yellow)); }
+        .bar-fill.hate { background: linear-gradient(90deg, rgba(255,77,106,0.45), var(--red)); }
+
+        .code-block {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #c8d0e5;
+            white-space: pre-wrap;
+            background: rgba(0,0,0,0.18);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+        }
+
+        .badge-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .tiny-badge {
+            padding: 5px 9px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* ── Header ───────────────────────────────────── */
+        .chat-header {
+            padding: 16px 28px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(9,12,18,0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 10;
+        }
+
+        .header-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #4f7cff, #7c4fff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 16px rgba(79,124,255,0.3);
+        }
+
+        .header-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .header-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .header-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+            border-color: var(--border-bright);
+        }
+
+        /* ── Mobile toggle ────────────────────────────── */
+        .mobile-toggle {
+            display: none;
+        }
+
+        /* ── Chat log ─────────────────────────────────── */
+        #chat-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px 28px 24px;
+            scroll-behavior: smooth;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #chat-log::-webkit-scrollbar { width: 4px; }
+        #chat-log::-webkit-scrollbar-track { background: transparent; }
         #chat-log::-webkit-scrollbar-thumb {
-            background: #4b5563; /* bg-gray-600 equivalent */
+            background: var(--bg-raised);
             border-radius: 4px;
         }
         #chat-log::-webkit-scrollbar-thumb:hover {
-            background: #6b7280; /* bg-gray-500 equivalent */
+            background: var(--text-muted);
         }
 
-        /* Custom glow/shadow for the container */
-        .chat-container {
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05); /* Deeper shadow and a subtle white border */
+        /* ── Message rows ─────────────────────────────── */
+        .msg-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            animation: msgFadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .msg-row.user { flex-direction: row-reverse; }
+
+        @keyframes msgFadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Avatars */
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .avatar.bot {
+            background: linear-gradient(135deg, #4f7cff22, #7c4fff22);
+            border: 1px solid rgba(79,124,255,0.3);
+            color: var(--accent);
+        }
+
+        .avatar.user-av {
+            background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+            border: 1px solid var(--border-bright);
+            color: var(--text-secondary);
+        }
+
+        /* Bubble wrapper */
+        .bubble-wrap { max-width: min(520px, 80%); display: flex; flex-direction: column; gap: 4px; }
+        .msg-row.user .bubble-wrap { align-items: flex-end; }
+
+        /* Bubbles */
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-size: 14px;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        .bubble.user {
+            background: var(--accent);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 24px rgba(79,124,255,0.25);
+        }
+
+        .bubble.bot-default {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* Classification cards */
+        .result-card {
+            border-radius: 14px;
+            border-bottom-left-radius: 4px;
+            border: 1px solid;
+            overflow: hidden;
+            min-width: 280px;
+            backdrop-filter: blur(8px);
+        }
+
+        .result-card.hate {
+            background: var(--red-bg);
+            border-color: rgba(255,77,106,0.2);
+        }
+
+        .result-card.offensive {
+            background: var(--yellow-bg);
+            border-color: rgba(255,190,61,0.2);
+        }
+
+        .result-card.normal {
+            background: var(--green-bg);
+            border-color: rgba(61,214,140,0.2);
+        }
+
+        .result-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 16px 10px;
+        }
+
+        .result-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .result-icon.hate     { background: rgba(255,77,106,0.15); }
+        .result-icon.offensive { background: rgba(255,190,61,0.15); }
+        .result-icon.normal   { background: rgba(61,214,140,0.15); }
+
+        .result-label {
+            font-family: 'Syne', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        .result-label.hate      { color: var(--red); }
+        .result-label.offensive { color: var(--yellow); }
+        .result-label.normal    { color: var(--green); }
+
+        .result-sublabel {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .result-body {
+            padding: 0 16px 14px;
+        }
+
+        .original-text {
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            border-left: 2px solid var(--border-bright);
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .confidence-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .confidence-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+        }
+
+        .confidence-value {
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'DM Sans', monospace;
+        }
+
+        .confidence-value.hate      { color: var(--red); }
+        .confidence-value.offensive { color: var(--yellow); }
+        .confidence-value.normal    { color: var(--green); }
+
+        .progress-track {
+            height: 4px;
+            border-radius: 99px;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 99px;
+            transition: width 0.8s cubic-bezier(0.22,1,0.36,1);
+        }
+
+        .progress-fill.hate      { background: linear-gradient(90deg, #ff4d6a88, #ff4d6a); }
+        .progress-fill.offensive { background: linear-gradient(90deg, #ffbe3d88, #ffbe3d); }
+        .progress-fill.normal    { background: linear-gradient(90deg, #3dd68c88, #3dd68c); }
+
+        /* Timestamp */
+        .msg-time {
+            font-size: 10.5px;
+            color: var(--text-muted);
+            padding: 0 2px;
+        }
+
+        /* Typing indicator */
+        .typing-bubble {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            border-bottom-left-radius: 4px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: typingBounce 1.2s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-4px); opacity: 1; }
+        }
+
+        /* Error bubble */
+        .error-bubble {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 14px;
+            background: rgba(255,77,106,0.06);
+            border: 1px solid rgba(255,77,106,0.2);
+            border-radius: 12px;
+            max-width: min(480px, 80%);
+        }
+
+        .error-bubble svg { flex-shrink: 0; margin-top: 1px; }
+
+        .error-text { font-size: 13.5px; color: #ff8099; line-height: 1.5; }
+        .error-text strong { color: var(--red); font-weight: 600; }
+
+        /* ── Welcome card ─────────────────────────────── */
+        .welcome-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 22px;
+            max-width: 400px;
+        }
+
+        .welcome-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 99px;
+            background: rgba(79,124,255,0.1);
+            border: 1px solid rgba(79,124,255,0.2);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .welcome-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .welcome-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 14px;
+        }
+
+        .welcome-labels {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .label-pill {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .label-pill.normal   { background: var(--green-bg); color: var(--green); }
+        .label-pill.offensive { background: var(--yellow-bg); color: var(--yellow); }
+        .label-pill.hate     { background: var(--red-bg); color: var(--red); }
+
+        .welcome-footer {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+
+        /* ── Input area ───────────────────────────────── */
+        .input-area {
+            padding: 16px 24px 20px;
+            border-top: 1px solid var(--border);
+            background: rgba(9,12,18,0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 6px 6px 6px 18px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-row:focus-within {
+            border-color: rgba(79,124,255,0.5);
+            box-shadow: 0 0 0 3px rgba(79,124,255,0.08), 0 0 20px rgba(79,124,255,0.06);
+        }
+
+        #user-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        #user-input::placeholder { color: var(--text-muted); }
+
+        #send-button {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: var(--accent);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            box-shadow: 0 2px 12px rgba(79,124,255,0.35);
+            flex-shrink: 0;
+        }
+
+        #send-button:hover {
+            background: #6b91ff;
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(79,124,255,0.45);
+        }
+
+        #send-button:active { transform: scale(0.97); }
+
+        #send-button:disabled {
+            background: var(--bg-raised);
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #send-button svg { color: #fff; }
+
+        .input-hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 10px;
+        }
+
+        /* ── Responsive ───────────────────────────────── */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0; top: 0; bottom: 0;
+                z-index: 100;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open { transform: translateX(0); }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 99;
+            }
+
+            .sidebar-overlay.open { display: block; }
+
+            .mobile-toggle { display: flex; }
+
+            #chat-log { padding: 20px 16px 16px; }
+
+            .input-area { padding: 12px 14px 16px; }
+
+            .chat-header { padding: 14px 16px; }
+
+            .bubble-wrap { max-width: 88%; }
+        }
+
+        @media (max-width: 480px) {
+            .result-card { min-width: 0; }
+            .welcome-labels { gap: 6px; }
         }
     </style>
+
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        // Refined dark palette
-                        'dark-bg': '#111827', // Deeper background
-                        'dark-card': '#1f2937', // Main container/card
-                        'dark-surface': '#374151', // Header/Input background
-                    }
-                }
-            }
-        }
+        tailwind.config = { corePlugins: { preflight: false } };
     </script>
 </head>
-<body class="h-full bg-dark-bg text-gray-100 flex items-center justify-center p-4">
+<body>
 
-    <div class="flex flex-col h-[95vh] w-full max-w-xl bg-dark-card rounded-3xl shadow-2xl overflow-hidden chat-container transition-all duration-300">
-        
-        <header class="bg-dark-surface p-4 border-b border-gray-700 shadow-xl z-10">
-            <div class="flex items-center space-x-4">
-                <div class="flex space-x-2">
-                    <div class="w-3 h-3 bg-red-500 rounded-full hover:bg-red-400 transition-colors cursor-pointer"></div>
-                    <div class="w-3 h-3 bg-yellow-500 rounded-full hover:bg-yellow-400 transition-colors cursor-pointer"></div>
-                    <div class="w-3 h-3 bg-green-500 rounded-full hover:bg-green-400 transition-colors cursor-pointer"></div>
-                </div>
-                <h1 class="text-xl font-bold ml-auto text-gray-50">Hate Speech <span class="text-blue-400">Moderator</span></h1>
-                <div class="flex-grow"></div> </div>
-        </header>
+<div class="app-shell">
 
-        <main id="chat-log" class="flex-1 p-6 space-y-6 overflow-y-auto">
-            <div class="flex justify-start">
-                <div class="max-w-xs lg:max-w-md bg-dark-surface p-4 rounded-xl shadow-lg rounded-tl-none">
-                    <p class="text-base text-gray-200">
-                        Hello! I am a **Content Moderation Bot**. Please type a message, and I will classify it as:
-                    </p>
-                    <ul class="list-disc list-inside mt-2 text-sm ml-2">
-                        <li class="font-medium text-green-400">Normal</li>
-                        <li class="font-medium text-yellow-400">Offensive</li>
-                        <li class="font-medium text-red-400">Hate Speech</li>
-                    </ul>
-                    <p class="text-xs text-gray-400 mt-3 border-t border-gray-600 pt-2">Powered by a live Python ML model. *Note: Classification is for demonstration.*</p>
-                </div>
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="wordmark">Moderate<span>AI</span></div>
+            <div class="badge">Content Intelligence</div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-label">Workspace</div>
+
+            <div class="nav-item active" data-view="live" onclick="switchView('live')">
+                <!-- Chat icon -->
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                Live Moderation
             </div>
-        </main>
 
-        <footer class="bg-dark-surface p-4 border-t border-gray-700">
-            <div class="flex space-x-3">
-                <input type="text" id="user-input" placeholder="Type your message..." 
-                       class="flex-1 bg-dark-card text-gray-100 border border-gray-600 rounded-full px-5 py-3 
-                              focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 
-                              placeholder-gray-500 shadow-inner" 
-                       autocomplete="off">
-                <button id="send-button" 
-                        class="bg-blue-600 text-white font-semibold w-12 h-12 flex items-center justify-center rounded-full 
-                               hover:bg-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 
-                               transition-all duration-200 transform hover:scale-105 shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                        <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.428A1 1 0 009 16.5v-4.5a1 1 0 011-1h.5a1 1 0 011 1v4.5a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.409l-7-14z" />
+            <div class="nav-item" data-view="dashboard" onclick="switchView('dashboard')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                </svg>
+                Dashboard
+            </div>
+
+            <div class="nav-item" data-view="analytics" onclick="switchView('analytics')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                Analytics
+            </div>
+
+            <div style="margin-top: 16px;" class="nav-label">Settings</div>
+
+            <div class="nav-item" data-view="config" onclick="switchView('config')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07A10 10 0 0 1 4.93 4.93"/>
+                </svg>
+                Model Config
+            </div>
+
+            <div class="nav-item" data-view="policy" onclick="switchView('policy')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Policy Rules
+            </div>
+
+            <div class="nav-item" data-view="settings" onclick="switchView('settings')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.29 17l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 6.04 4.3l.06.06A1.65 1.65 0 0 0 8 4.6c.43 0 .83-.17 1.13-.47A1.65 1.65 0 0 0 9.4 2.31V2.2a2 2 0 1 1 4 0v.09c0 .63.36 1.2.91 1.47.4.2.88.24 1.31.11.43-.13.8-.42 1.05-.8l.06-.06A2 2 0 1 1 19.7 6.04l-.06.06c-.3.3-.47.7-.47 1.13 0 .63.36 1.2.91 1.47.4.2.88.24 1.31.11.43-.13.8-.42 1.05-.8l.06-.06A2 2 0 1 1 20.7 15l-.06.06A1.65 1.65 0 0 0 19.4 15z"/>
+                </svg>
+                Settings
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="model-pill">
+                <div class="model-dot"></div>
+                <span>ML Model Active</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main chat -->
+    <div class="chat-main">
+        <header class="chat-header">
+            <button class="icon-btn mobile-toggle" onclick="toggleSidebar()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+
+            <div class="header-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+
+            <div>
+                <div class="header-title" id="header-title">Live Moderation</div>
+                <div class="header-sub" id="header-sub">Real-time hate speech detection</div>
+            </div>
+
+            <div class="header-actions">
+                <button class="icon-btn" title="Clear chat" onclick="clearChat()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                </button>
+                <button class="icon-btn" title="Reset views" onclick="switchView('live')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 3-6.7"/>
+                        <polyline points="3 3 3 9 9 9"/>
                     </svg>
                 </button>
             </div>
-        </footer>
-    </div>
+        </header>
 
-    <script>
-        // --- DOM Elements ---
-        const chatLog = document.getElementById('chat-log');
-        const userInput = document.getElementById('user-input');
-        const sendButton = document.getElementById('send-button');
+        <div class="workspace-panels">
+            <section class="view-panel active" data-view="live" id="live-panel">
+                <main id="chat-log">
+                    <div class="msg-row" id="welcome-row">
+                        <div class="avatar bot">M</div>
+                        <div class="bubble-wrap">
+                            <div class="welcome-card">
+                                <div class="welcome-chip">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+                                    Live · Powered by ML
+                                </div>
+                                <div class="welcome-title">Content Moderation Assistant</div>
+                                <div class="welcome-desc">
+                                    Submit any text and I'll analyze it in real-time using the trained Python pipeline from <code>model.joblib</code>.
+                                </div>
+                                <div class="welcome-labels">
+                                    <span class="label-pill normal">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                        Normal
+                                    </span>
+                                    <span class="label-pill offensive">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        Offensive
+                                    </span>
+                                    <span class="label-pill hate">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        Hate Speech
+                                    </span>
+                                </div>
+                                <div class="welcome-footer">
+                                    Trained with TF-IDF bigrams, LogisticRegression, and class balancing on <code>labeled_data.csv</code>.
+                                </div>
+                            </div>
+                            <div class="msg-time" id="welcome-time"></div>
+                        </div>
+                    </div>
+                </main>
 
-        // --- Event Listeners ---
-        sendButton.addEventListener('click', handleSendMessage);
-        userInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                handleSendMessage();
-            }
+                <footer class="input-area">
+                    <div class="input-row">
+                        <input type="text" id="user-input" placeholder="Enter text to analyze…" autocomplete="off" maxlength="1000">
+                        <button id="send-button" title="Analyze">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="input-hint">Press Enter or click send · Powered by Python ML</div>
+                </footer>
+            </section>
+
+            <section class="view-panel" data-view="dashboard" id="dashboard-panel">
+                <div class="panel-grid">
+                    <div class="glass-card hero-card">
+                        <div>
+                            <div class="view-section-title">Workspace</div>
+                            <div class="hero-title">Moderation console with live model telemetry.</div>
+                            <div class="hero-copy">
+                                This interface is now wired directly to the classifier in <code>server.py</code>. Every prediction updates the dashboard, analytics, and policy surfaces so the project feels like a full control room.
+                            </div>
+                            <div class="hero-badges">
+                                <span class="status-pill"><strong>Backend</strong> local `/classify` API</span>
+                                <span class="status-pill"><strong>Model</strong> `model.joblib`</span>
+                                <span class="status-pill"><strong>Frontend</strong> `hate_speech_detector.html`</span>
+                            </div>
+                        </div>
+                        <div class="glass-card" style="padding: 16px;">
+                            <div class="card-title">Live Snapshot</div>
+                            <div class="card-subtitle">A compact view of the pipeline as it runs.</div>
+                            <div class="mini-grid">
+                                <div class="mini-stat">
+                                    <span>Queued checks</span>
+                                    <div class="num" id="dash-total-mini">0</div>
+                                </div>
+                                <div class="mini-stat">
+                                    <span>Mean confidence</span>
+                                    <div class="num" id="dash-confidence-mini">0%</div>
+                                </div>
+                                <div class="mini-stat">
+                                    <span>Policy hits</span>
+                                    <div class="num" id="dash-hits-mini">0</div>
+                                </div>
+                                <div class="mini-stat">
+                                    <span>Model health</span>
+                                    <div class="num" style="color: var(--green);">OK</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Total reviews</div>
+                        <div class="kpi-value" id="kpi-total">0</div>
+                        <div class="kpi-note">Every submitted message increments the live moderation ledger.</div>
+                    </div>
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Hate flags</div>
+                        <div class="kpi-value" id="kpi-hate">0</div>
+                        <div class="kpi-note">High-risk content is surfaced in red and tracked here.</div>
+                    </div>
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Offensive flags</div>
+                        <div class="kpi-value" id="kpi-offensive">0</div>
+                        <div class="kpi-note">Moderation-eligible content is counted separately for review.</div>
+                    </div>
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Normal passes</div>
+                        <div class="kpi-value" id="kpi-normal">0</div>
+                        <div class="kpi-note">Benign text is recorded as approved traffic.</div>
+                    </div>
+
+                    <div class="glass-card stack-card">
+                        <div class="card-title">Risk Radar</div>
+                        <div class="card-subtitle">The model output is broken down by the same three classes used in the code.</div>
+                        <div class="stack-list">
+                            <div class="stack-row">
+                                <div>
+                                    <strong>Hate Speech</strong>
+                                    <div><span>Red-flag escalation path</span></div>
+                                </div>
+                                <strong id="radar-hate">0%</strong>
+                            </div>
+                            <div class="metric-track"><div class="metric-fill hate" id="radar-hate-bar" style="width: 0%"></div></div>
+                            <div class="stack-row">
+                                <div>
+                                    <strong>Offensive Language</strong>
+                                    <div><span>Needs moderation review</span></div>
+                                </div>
+                                <strong id="radar-offensive">0%</strong>
+                            </div>
+                            <div class="metric-track"><div class="metric-fill offensive" id="radar-offensive-bar" style="width: 0%"></div></div>
+                            <div class="stack-row">
+                                <div>
+                                    <strong>Normal Speech</strong>
+                                    <div><span>Approved traffic</span></div>
+                                </div>
+                                <strong id="radar-normal">0%</strong>
+                            </div>
+                            <div class="metric-track"><div class="metric-fill normal" id="radar-normal-bar" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card side-card">
+                        <div class="card-title">Recent Signals</div>
+                        <div class="card-subtitle">The last few classifications are streamed here in real time.</div>
+                        <div class="signal-list" id="signal-feed">
+                            <div class="signal-row">
+                                <strong>System ready</strong>
+                                <div><span>Waiting for the first moderation event.</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="view-panel" data-view="analytics" id="analytics-panel">
+                <div class="panel-grid">
+                    <div class="glass-card stack-card" style="grid-column: span 12;">
+                        <div class="card-title">Analytics</div>
+                        <div class="card-subtitle">Class distribution and model confidence are updated from live predictions.</div>
+                        <div class="analytics-bars">
+                            <div class="bar-row">
+                                <strong>Normal</strong>
+                                <div class="bar-track"><div class="bar-fill normal" id="analytics-normal-bar" style="width: 0%"></div></div>
+                                <strong id="analytics-normal-val">0%</strong>
+                            </div>
+                            <div class="bar-row">
+                                <strong>Offensive</strong>
+                                <div class="bar-track"><div class="bar-fill offensive" id="analytics-offensive-bar" style="width: 0%"></div></div>
+                                <strong id="analytics-offensive-val">0%</strong>
+                            </div>
+                            <div class="bar-row">
+                                <strong>Hate</strong>
+                                <div class="bar-track"><div class="bar-fill hate" id="analytics-hate-bar" style="width: 0%"></div></div>
+                                <strong id="analytics-hate-val">0%</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card side-card">
+                        <div class="card-title">Confidence Band</div>
+                        <div class="card-subtitle">Rolling average of the last moderation results.</div>
+                        <div class="kpi-value" id="analytics-confidence">0%</div>
+                        <div class="metric-track"><div class="metric-fill normal" id="analytics-confidence-bar" style="width: 0%"></div></div>
+                        <div class="badge-row">
+                            <span class="tiny-badge">TF-IDF</span>
+                            <span class="tiny-badge">Balanced LR</span>
+                            <span class="tiny-badge">Bigrams</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card side-card">
+                        <div class="card-title">System Health</div>
+                        <div class="card-subtitle">Core runtime checks from the local project files.</div>
+                        <div class="setting-list">
+                            <div class="setting-row"><strong>Model file</strong><div><span>Loaded from `model.joblib`</span></div></div>
+                            <div class="setting-row"><strong>Preprocessing</strong><div><span>Stopwords, URLs, punctuation</span></div></div>
+                            <div class="setting-row"><strong>Endpoint</strong><div><span>POST `/classify`</span></div></div>
+                            <div class="setting-row"><strong>Frontend</strong><div><span>Single-page HTML interface</span></div></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="view-panel" data-view="config" id="config-panel">
+                <div class="panel-grid">
+                    <div class="glass-card stack-card" style="grid-column: span 12;">
+                        <div class="card-title">Model Config</div>
+                        <div class="card-subtitle">The exact pipeline used by the codebase, shown as a readable config surface.</div>
+                        <div class="code-block">clean_text:
+  lowercase: true
+  remove_urls: true
+  remove_mentions_hashtags: true
+  remove_punctuation: true
+  remove_stopwords: true
+
+vectorizer:
+  type: TfidfVectorizer
+  ngram_range: (1, 2)
+
+classifier:
+  type: LogisticRegression
+  class_weight: balanced
+  solver: liblinear
+  random_state: 42
+
+artifacts:
+  model: model.joblib
+  dataset: labeled_data.csv</div>
+                    </div>
+
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Classes</div>
+                        <div class="kpi-value">3</div>
+                        <div class="kpi-note">Hate speech, offensive language, and normal speech.</div>
+                    </div>
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Vectorizer</div>
+                        <div class="kpi-value">TF-IDF</div>
+                        <div class="kpi-note">Bigram aware text features for moderation context.</div>
+                    </div>
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Balance mode</div>
+                        <div class="kpi-value">On</div>
+                        <div class="kpi-note">Class weighting offsets the dataset imbalance.</div>
+                    </div>
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Inference</div>
+                        <div class="kpi-value">Live</div>
+                        <div class="kpi-note">Results stream directly from the local endpoint.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="view-panel" data-view="policy" id="policy-panel">
+                <div class="panel-grid">
+                    <div class="glass-card stack-card" style="grid-column: span 12;">
+                        <div class="card-title">Policy Rules</div>
+                        <div class="card-subtitle">The moderation logic mirrors the numeric classes returned by the model.</div>
+                        <div class="rule-list">
+                            <div class="rule-row">
+                                <strong>0 · Hate Speech</strong>
+                                <div><span>Escalate immediately, remove content, and trigger red-state UI.</span></div>
+                            </div>
+                            <div class="rule-row">
+                                <strong>1 · Offensive Language</strong>
+                                <div><span>Flag for review, keep visible only in controlled moderation workflows.</span></div>
+                            </div>
+                            <div class="rule-row">
+                                <strong>2 · Normal Speech</strong>
+                                <div><span>Allow through and log as approved traffic.</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card side-card">
+                        <div class="card-title">Escalation Matrix</div>
+                        <div class="card-subtitle">Use the confidence score to drive response intensity.</div>
+                        <div class="setting-list">
+                            <div class="setting-row"><strong>High confidence hate</strong><div><span>Immediate block + audit log</span></div></div>
+                            <div class="setting-row"><strong>Medium offensive</strong><div><span>Queue for human review</span></div></div>
+                            <div class="setting-row"><strong>Normal content</strong><div><span>Pass with green status</span></div></div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card side-card">
+                        <div class="card-title">Safety Notes</div>
+                        <div class="card-subtitle">Designed for demo use with the provided dataset and model pipeline.</div>
+                        <div class="badge-row">
+                            <span class="tiny-badge">Demo mode</span>
+                            <span class="tiny-badge">Manual review recommended</span>
+                            <span class="tiny-badge">Local only</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="view-panel" data-view="settings" id="settings-panel">
+                <div class="panel-grid">
+                    <div class="glass-card stack-card" style="grid-column: span 12;">
+                        <div class="card-title">Settings</div>
+                        <div class="card-subtitle">Project wiring and runtime surface that make the frontend feel like a complete product.</div>
+                        <div class="setting-list">
+                            <div class="setting-row">
+                                <strong>Frontend route</strong>
+                                <div><span>Served from `hate_speech_detector.html`</span></div>
+                            </div>
+                            <div class="setting-row">
+                                <strong>API route</strong>
+                                <div><span>Same-origin `POST /classify`</span></div>
+                            </div>
+                            <div class="setting-row">
+                                <strong>Runtime mode</strong>
+                                <div><span>Local Python server with model inference</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Theme</div>
+                        <div class="kpi-value">Dark</div>
+                        <div class="kpi-note">Designed to feel like a high-end moderation control plane.</div>
+                    </div>
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Latency</div>
+                        <div class="kpi-value">Low</div>
+                        <div class="kpi-note">Single local request to the classifier endpoint.</div>
+                    </div>
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Mode</div>
+                        <div class="kpi-value">Online</div>
+                        <div class="kpi-note">Frontend and backend are connected in real time.</div>
+                    </div>
+                    <div class="glass-card kpi-card">
+                        <div class="kpi-label">Status</div>
+                        <div class="kpi-value" style="color: var(--green);">Ready</div>
+                        <div class="kpi-note">The local stack is good to go.</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div><!-- /chat-main -->
+</div><!-- /app-shell -->
+
+<script>
+    /* ── Helpers ───────────────────────────────────────── */
+    const stats = {
+        total: 0,
+        hate: 0,
+        offensive: 0,
+        normal: 0,
+        confidenceSum: 0,
+        recent: []
+    };
+
+    const viewMeta = {
+        live: { title: 'Live Moderation', sub: 'Real-time hate speech detection' },
+        dashboard: { title: 'Dashboard', sub: 'System overview, threat stream, and moderation velocity' },
+        analytics: { title: 'Analytics', sub: 'Distribution, confidence bands, and model health' },
+        config: { title: 'Model Config', sub: 'Exact ML pipeline from the codebase' },
+        policy: { title: 'Policy Rules', sub: 'Decision logic aligned with the classifier' },
+        settings: { title: 'Settings', sub: 'Runtime controls and local deployment surface' }
+    };
+
+    const viewPanels = Array.from(document.querySelectorAll('.view-panel'));
+    const navItems = Array.from(document.querySelectorAll('.nav-item[data-view]'));
+    const headerTitle = document.getElementById('header-title');
+    const headerSub = document.getElementById('header-sub');
+
+    function getTime() {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    document.getElementById('welcome-time').textContent = getTime();
+
+    function switchView(view) {
+        viewPanels.forEach(panel => {
+            panel.classList.toggle('active', panel.dataset.view === view);
+        });
+        navItems.forEach(item => {
+            item.classList.toggle('active', item.dataset.view === view);
         });
 
-        /**
-         * Handles sending a message: gets user input, displays it, and gets a bot response.
-         */
-        function handleSendMessage() {
-            const message = userInput.value.trim();
-            if (message === '') return;
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebar-overlay').classList.remove('open');
 
-            // 1. Display the user's message
-            displayMessage(message, 'user');
+        const meta = viewMeta[view] || viewMeta.live;
+        headerTitle.textContent = meta.title;
+        headerSub.textContent = meta.sub;
+    }
 
-            // 2. Clear the input
-            userInput.value = '';
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('sidebar-overlay').classList.toggle('open');
+    }
 
-            // 3. Get and display the bot's response
-            getBotResponse(message);
+    function clearChat() {
+        const log = document.getElementById('chat-log');
+        // Keep only the welcome row
+        const rows = log.querySelectorAll('.msg-row:not(#welcome-row)');
+        rows.forEach(r => r.remove());
+    }
+
+    function pct(value, total) {
+        return total > 0 ? Math.round((value / total) * 100) : 0;
+    }
+
+    function trimMessage(text, length = 42) {
+        const compact = text.replace(/\s+/g, ' ').trim();
+        return compact.length > length ? `${compact.slice(0, length - 1)}…` : compact;
+    }
+
+    function registerSignal(message, classification) {
+        const label = classification.class === 0 ? 'Hate Speech' : classification.class === 1 ? 'Offensive' : 'Normal';
+        stats.total += 1;
+        stats.confidenceSum += classification.confidence || 0;
+
+        if (classification.class === 0) stats.hate += 1;
+        else if (classification.class === 1) stats.offensive += 1;
+        else stats.normal += 1;
+
+        stats.recent.unshift({
+            label,
+            message: trimMessage(message),
+            confidence: Math.round((classification.confidence || 0) * 100),
+            classId: classification.class
+        });
+        stats.recent = stats.recent.slice(0, 5);
+
+        renderStats();
+    }
+
+    function renderStats() {
+        const total = stats.total;
+        const hatePct = pct(stats.hate, total);
+        const offensivePct = pct(stats.offensive, total);
+        const normalPct = pct(stats.normal, total);
+        const avgConfidence = total ? Math.round((stats.confidenceSum / total) * 100) : 0;
+
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        setText('kpi-total', total);
+        setText('kpi-hate', stats.hate);
+        setText('kpi-offensive', stats.offensive);
+        setText('kpi-normal', stats.normal);
+
+        setText('dash-total-mini', total);
+        setText('dash-confidence-mini', `${avgConfidence}%`);
+        setText('dash-hits-mini', stats.hate + stats.offensive);
+
+        setText('radar-hate', `${hatePct}%`);
+        setText('radar-offensive', `${offensivePct}%`);
+        setText('radar-normal', `${normalPct}%`);
+
+        setText('analytics-confidence', `${avgConfidence}%`);
+        setText('analytics-normal-val', `${normalPct}%`);
+        setText('analytics-offensive-val', `${offensivePct}%`);
+        setText('analytics-hate-val', `${hatePct}%`);
+
+        const fills = {
+            'radar-hate-bar': hatePct,
+            'radar-offensive-bar': offensivePct,
+            'radar-normal-bar': normalPct,
+            'analytics-normal-bar': normalPct,
+            'analytics-offensive-bar': offensivePct,
+            'analytics-hate-bar': hatePct,
+            'analytics-confidence-bar': avgConfidence
+        };
+
+        Object.entries(fills).forEach(([id, value]) => {
+            const el = document.getElementById(id);
+            if (el) el.style.width = `${value}%`;
+        });
+
+        const feed = document.getElementById('signal-feed');
+        if (feed) {
+            feed.innerHTML = stats.recent.length
+                ? stats.recent.map(item => `
+                    <div class="signal-row">
+                        <strong>${item.label} · ${item.confidence}%</strong>
+                        <div><span>${escHtml(item.message)}</span></div>
+                    </div>
+                `).join('')
+                : `
+                    <div class="signal-row">
+                        <strong>System ready</strong>
+                        <div><span>Waiting for the first moderation event.</span></div>
+                    </div>
+                `;
         }
+    }
 
-        /**
-         * Displays a message in the chat log.
-         * @param {string} message - The text content of the message.
-         * @param {string} sender - 'user' or 'bot'.
-         * @param {object} [classification] - Optional classification result object.
-         */
-        function displayMessage(message, sender, classification = null) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('flex', 'max-w-full'); // Added max-w-full for better message wrapping
+    /* ── DOM refs ──────────────────────────────────────── */
+    const chatLog    = document.getElementById('chat-log');
+    const userInput  = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
 
-            // Use rounded-xl for a softer look, removing the hard triangle shape
-            let bubbleClasses = 'p-4 rounded-xl shadow-lg transition-all duration-300';
-            let content = `<p class="text-base">${message}</p>`; // Increased text size for better readability
-            
-            if (sender === 'user') {
-                messageElement.classList.add('justify-end');
-                // Brighter user bubble
-                bubbleClasses += ' bg-blue-500 text-white rounded-br-none'; 
-            } else {
-                messageElement.classList.add('justify-start');
-                
-                // --- Apply dynamic styling based on classification ---
-                if (classification) {
-                    if (classification.class === 0) { // Hate
-                        bubbleClasses += ' bg-red-700 text-white border border-red-500 rounded-tl-none'; // Deeper red, border for emphasis
-                        content = `
-                            <p class="font-bold text-base mb-1">HATE SPEECH</p>
-                            <p class="text-sm">This content is flagged as hate speech and is highly violative. Confidence: <span class="font-mono">${(classification.confidence * 100).toFixed(2)}%</span></p>
-                            <div class="mt-3 pt-2 border-t border-red-500">
-                                <p class="text-xs text-red-200 italic">Original: "${message}"</p>
-                            </div>
-                        `;
-                    } else if (classification.class === 1) { // Offensive
-                        bubbleClasses += ' bg-yellow-600 text-gray-900 border border-yellow-400 rounded-tl-none'; // Yellow-600 for high contrast
-                        content = `
-                            <p class="font-bold text-base mb-1">OFFENSIVE CONTENT</p>
-                            <p class="text-sm">This content is flagged as offensive language. Confidence: <span class="font-mono">${(classification.confidence * 100).toFixed(2)}%</span></p>
-                            <div class="mt-3 pt-2 border-t border-yellow-700">
-                                <p class="text-xs text-yellow-900 italic">Original: "${message}"</p>
-                            </div>
-                        `;
-                    } else { // Neither/Normal
-                        bubbleClasses += ' bg-green-600 text-white border border-green-500 rounded-tl-none';
-                        content = `
-                            <p class="font-bold text-base mb-1">NORMAL SPEECH</p>
-                            <p class="text-sm">This content appears to be normal and non-violative. Confidence: <span class="font-mono">${(classification.confidence * 100).toFixed(2)}%</span></p>
-                            <div class="mt-3 pt-2 border-t border-green-500">
-                                <p class="text-xs text-green-200 italic">Original: "${message}"</p>
-                            </div>
-                        `;
-                    }
-                } else {
-                    // Default bot bubble for non-classification messages (e.g., error/analyzing)
-                    bubbleClasses += ' bg-dark-surface text-gray-100 rounded-tl-none';
-                    content = `<p class="text-base">${message}</p>`;
-                }
-            }
+    switchView('live');
+    renderStats();
 
-            // Wrapping the message content for maximum width constraint
-            messageElement.innerHTML = `<div class="${bubbleClasses} max-w-[85%]">${content}</div>`;
-            chatLog.appendChild(messageElement);
+    /* ── Event listeners ───────────────────────────────── */
+    sendButton.addEventListener('click', handleSend);
+    userInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleSend(); });
 
-            // Scroll to the bottom
-            chatLog.scrollTop = chatLog.scrollHeight;
-        }
+    /* ── Handle send ───────────────────────────────────── */
+    function handleSend() {
+        const msg = userInput.value.trim();
+        if (!msg) return;
+        appendUserBubble(msg);
+        userInput.value = '';
+        getBotResponse(msg);
+    }
 
-        /**
-         * Gets a response from the "bot" by calling the Python API.
-         * @param {string} message - The user's input message.
-         */
-        async function getBotResponse(message) {
-            // Display a temporary "analyzing" message
-            const analyzingElement = document.createElement('div');
-            analyzingElement.classList.add('flex', 'justify-start', 'analyzing-bubble');
-            analyzingElement.innerHTML = `
-                <div class="bg-gray-600 p-4 rounded-xl shadow-md rounded-tl-none">
-                    <p class="text-sm italic text-gray-300">Analyzing content...</p>
+    /* ── Append user bubble ────────────────────────────── */
+    function appendUserBubble(text) {
+        const row = document.createElement('div');
+        row.className = 'msg-row user';
+        row.innerHTML = `
+            <div class="avatar user-av">U</div>
+            <div class="bubble-wrap">
+                <div class="bubble user">${escHtml(text)}</div>
+                <div class="msg-time">${getTime()}</div>
+            </div>
+        `;
+        chatLog.appendChild(row);
+        scrollBottom();
+    }
+
+    /* ── Typing indicator ──────────────────────────────── */
+    function appendTyping() {
+        const row = document.createElement('div');
+        row.className = 'msg-row';
+        row.id = 'typing-row';
+        row.innerHTML = `
+            <div class="avatar bot">M</div>
+            <div class="bubble-wrap">
+                <div class="typing-bubble">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
                 </div>
-            `;
-            chatLog.appendChild(analyzingElement);
-            chatLog.scrollTop = chatLog.scrollHeight;
-            
-            // --- API Call to Python Backend ---
-            // Dynamically determine API URL based on current location
-            const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                ? 'http://127.0.0.1:5000/classify'
-                : '/classify';
-            let classification;
+            </div>
+        `;
+        chatLog.appendChild(row);
+        scrollBottom();
+    }
 
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ message: message })
-                });
+    function removeTyping() {
+        const el = document.getElementById('typing-row');
+        if (el) el.remove();
+    }
 
-                if (!response.ok) {
-                    // Handle server errors (e.g., 500)
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                classification = await response.json();
+    /* ── Append result card ────────────────────────────── */
+    function appendResultCard(message, classification) {
+        const row = document.createElement('div');
+        row.className = 'msg-row';
 
-            } catch (error) {
-                console.error("Error calling classification API:", error);
-                // Create a special error classification to display
-                classification = {
-                    class: -1, // Custom error class
-                    label: "Connection Error",
-                    message: "Could not connect to the Python model. Please ensure the server is running. Run `python3 app.py`."
-                };
-            }
-            // ----------------------------------------
+        let cls, icon, label, sublabel;
 
-            // Remove the "analyzing" message
-            const tempBubble = chatLog.querySelector('.analyzing-bubble');
-            if (tempBubble) {
-                chatLog.removeChild(tempBubble);
-            }
-            
-            // Display the *actual* classification result
-            if (classification.class === -1) {
-                // Show a special error message in the chat
-                displayMessage(classification.message, 'bot');
-            } else {
-                // Pass the original message to be quoted in the response
-                displayMessage(message, 'bot', classification);
-            }
+        if (classification.class === 0) {
+            cls = 'hate'; icon = '✖'; label = 'Hate Speech'; sublabel = 'Violates policy — harmful content';
+        } else if (classification.class === 1) {
+            cls = 'offensive'; icon = '⚠'; label = 'Offensive'; sublabel = 'Flagged — potentially harmful language';
+        } else {
+            cls = 'normal'; icon = '✔'; label = 'Normal Speech'; sublabel = 'Passes moderation check';
         }
-    </script>
+
+        const pct = (classification.confidence * 100).toFixed(1);
+
+        row.innerHTML = `
+            <div class="avatar bot">M</div>
+            <div class="bubble-wrap">
+                <div class="result-card ${cls}">
+                    <div class="result-card-header">
+                        <div class="result-icon ${cls}">${icon}</div>
+                        <div>
+                            <div class="result-label ${cls}">${label}</div>
+                            <div class="result-sublabel">${sublabel}</div>
+                        </div>
+                    </div>
+                    <div class="result-body">
+                        <div class="original-text">"${escHtml(message)}"</div>
+                        <div class="confidence-row">
+                            <span class="confidence-label">Confidence</span>
+                            <span class="confidence-value ${cls}">${pct}%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill ${cls}" style="width: 0%" data-target="${pct}"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="msg-time">${getTime()}</div>
+            </div>
+        `;
+
+        chatLog.appendChild(row);
+        scrollBottom();
+
+        // Animate progress bar
+        requestAnimationFrame(() => {
+            const fill = row.querySelector('.progress-fill');
+            if (fill) {
+                setTimeout(() => { fill.style.width = fill.dataset.target + '%'; }, 80);
+            }
+        });
+    }
+
+    /* ── Append error bubble ───────────────────────────── */
+    function appendError(text) {
+        const row = document.createElement('div');
+        row.className = 'msg-row';
+        row.innerHTML = `
+            <div class="avatar bot">M</div>
+            <div class="bubble-wrap">
+                <div class="error-bubble">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff4d6a" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <div class="error-text"><strong>Connection error</strong> — ${escHtml(text)}</div>
+                </div>
+                <div class="msg-time">${getTime()}</div>
+            </div>
+        `;
+        chatLog.appendChild(row);
+        scrollBottom();
+    }
+
+    /* ── API call ──────────────────────────────────────── */
+    async function getBotResponse(message) {
+        sendButton.disabled = true;
+        appendTyping();
+
+        const API_URL = '/classify';
+
+        let classification;
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            classification = await response.json();
+            if (classification.class !== -1) {
+                registerSignal(message, classification);
+            }
+        } catch (err) {
+            console.error('API error:', err);
+            classification = { class: -1, message: 'Could not connect to the Python model. Ensure the server is running (`python3 app.py`).' };
+        }
+
+        removeTyping();
+        sendButton.disabled = false;
+
+        if (classification.class === -1) {
+            appendError(classification.message);
+        } else {
+            appendResultCard(message, classification);
+        }
+    }
+
+    /* ── Utils ─────────────────────────────────────────── */
+    function scrollBottom() {
+        chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: 'smooth' });
+    }
+
+    function escHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+</script>
 </body>
 </html>
