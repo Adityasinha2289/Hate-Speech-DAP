@@ -36,6 +36,9 @@ The project includes a dramatic, product-style frontend so the app feels more li
 
 ```text
 .
+├── index.html
+├── api/
+│   └── classify.py
 ├── app.py
 ├── server.py
 ├── hate_speech_detector.html
@@ -43,6 +46,7 @@ The project includes a dramatic, product-style frontend so the app feels more li
 ├── model.joblib
 ├── labeled_data.csv
 ├── requirements.txt
+├── vercel.json
 ├── Dockerfile
 └── README.md
 ```
@@ -100,6 +104,34 @@ Visit:
 ```text
 http://127.0.0.1:7861
 ```
+
+## Free Public Hosting
+
+### Option 1: Vercel
+
+This repo is now Vercel-ready:
+
+- `index.html` is the public entry point
+- `api/classify.py` serves the moderation API at `/api/classify`
+- `vercel.json` keeps the function bundle lean
+
+To publish it on Vercel:
+
+1. Sign in to Vercel with GitHub.
+2. Import this repository.
+3. Deploy it as a project.
+4. Open the generated public `vercel.app` link.
+
+### Option 2: Hugging Face Spaces
+
+If you want a model-demo style link, you can also deploy the repo as a Docker Space.
+
+## Vercel Notes
+
+- The frontend calls the API with a relative `/api/classify` path.
+- The model is loaded directly from `model.joblib`.
+- The function uses lightweight built-in preprocessing so it can run without downloading NLTK data at runtime.
+- The repo stays free-tier friendly by excluding local-only training files from the function bundle.
 
 ## Model Details
 
