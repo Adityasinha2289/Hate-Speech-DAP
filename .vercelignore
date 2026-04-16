@@ -1,0 +1,6 @@
+.venv
+__pycache__
+app.py
+server.py
+train_model.py
+labeled_data.csv
