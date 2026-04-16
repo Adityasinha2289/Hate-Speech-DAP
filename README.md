@@ -65,7 +65,7 @@ The project includes a dramatic, product-style frontend so the app feels more li
 - scikit-learn
 - joblib
 - nltk
-- Flask-compatible local API design
+- Python runtime on Vercel
 - HTML, CSS, JavaScript
 - Tailwind CSS CDN for styling support
 
@@ -91,7 +91,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Start the local server
+### 4. Start the Vercel-friendly API locally
 
 ```bash
 python3 server.py
@@ -103,6 +103,15 @@ Visit:
 
 ```text
 http://127.0.0.1:7861
+```
+
+### Local demo stack
+
+If you want to run the original richer local demo server, install the extra UI dependencies:
+
+```bash
+pip install gradio nltk flask flask-cors pandas
+python3 app.py
 ```
 
 ## Free Public Hosting
@@ -131,7 +140,7 @@ If you want a model-demo style link, you can also deploy the repo as a Docker Sp
 - The frontend calls the API with a relative `/api/classify` path.
 - The model is loaded directly from `model.joblib`.
 - The function uses lightweight built-in preprocessing so it can run without downloading NLTK data at runtime.
-- The repo stays free-tier friendly by excluding local-only training files from the function bundle.
+- The repo stays free-tier friendly by ignoring local-only training files in `.vercelignore`.
 
 ## Model Details
 
