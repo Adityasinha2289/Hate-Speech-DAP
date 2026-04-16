@@ -1,14 +1,3 @@
 {
-  "functions": {
-    "api/classify.py": {
-      "excludeFiles": [
-        ".venv/**",
-        "app.py",
-        "server.py",
-        "train_model.py",
-        "labeled_data.csv",
-        "README.md"
-      ]
-    }
-  }
+  "$schema": "https://openapi.vercel.sh/vercel.json"
 }
