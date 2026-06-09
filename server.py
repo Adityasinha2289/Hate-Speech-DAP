@@ -53,10 +53,13 @@ class Handler(BaseHTTPRequestHandler):
         if self.path in ("/", "/index.html"):
             self._send(200, "text/html; charset=utf-8", HTML_PATH.read_bytes())
             return
+        if self.path in ("/classify", "/api/classify"):
+            self._send(200, "application/json; charset=utf-8", b'{"status":"ok"}')
+            return
         self._send(404, "text/plain; charset=utf-8", b"Not Found")
 
     def do_POST(self):
-        if self.path != "/classify":
+        if self.path not in ("/classify", "/api/classify"):
             self._send(404, "application/json; charset=utf-8", b'{"error":"Not Found"}')
             return
 

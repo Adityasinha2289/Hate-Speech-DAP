@@ -1171,7 +1171,7 @@
                                 This interface is now wired directly to the classifier in <code>server.py</code>. Every prediction updates the dashboard, analytics, and policy surfaces so the project feels like a full control room.
                             </div>
                             <div class="hero-badges">
-                                <span class="status-pill"><strong>Backend</strong> local `/classify` API</span>
+                                <span class="status-pill"><strong>Backend</strong> local `/api/classify` API</span>
                                 <span class="status-pill"><strong>Model</strong> `model.joblib`</span>
                                 <span class="status-pill"><strong>Frontend</strong> `hate_speech_detector.html`</span>
                             </div>
@@ -1307,7 +1307,7 @@
                         <div class="setting-list">
                             <div class="setting-row"><strong>Model file</strong><div><span>Loaded from `model.joblib`</span></div></div>
                             <div class="setting-row"><strong>Preprocessing</strong><div><span>Stopwords, URLs, punctuation</span></div></div>
-                            <div class="setting-row"><strong>Endpoint</strong><div><span>POST `/classify`</span></div></div>
+                            <div class="setting-row"><strong>Endpoint</strong><div><span>POST `/api/classify`</span></div></div>
                             <div class="setting-row"><strong>Frontend</strong><div><span>Single-page HTML interface</span></div></div>
                         </div>
                     </div>
@@ -1419,7 +1419,7 @@ artifacts:
                             </div>
                             <div class="setting-row">
                                 <strong>API route</strong>
-                                <div><span>Same-origin `POST /classify`</span></div>
+                                <div><span>Same-origin `POST /api/classify`</span></div>
                             </div>
                             <div class="setting-row">
                                 <strong>Runtime mode</strong>
@@ -1763,7 +1763,7 @@ artifacts:
             }
         } catch (err) {
             console.error('API error:', err);
-            classification = { class: -1, message: 'Could not connect to the Python model. Ensure the server is running (`python3 app.py`).' };
+            classification = { class: -1, message: 'Could not connect to the Python model. Ensure the local server is running (`python3 server.py`).' };
         }
 
         removeTyping();
