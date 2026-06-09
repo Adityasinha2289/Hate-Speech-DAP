@@ -110,7 +110,7 @@ http://127.0.0.1:7861
 If you want to run the original richer local demo server, install the extra UI dependencies:
 
 ```bash
-pip install gradio nltk flask flask-cors pandas
+pip install gradio nltk
 python3 app.py
 ```
 
@@ -156,7 +156,7 @@ If you want a model-demo style link, you can also deploy the repo as a Docker Sp
 
 ## API
 
-### `POST /classify`
+### `POST /api/classify`
 
 Request body:
 
